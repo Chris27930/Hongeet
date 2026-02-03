@@ -1,0 +1,87 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../core/theme/app_theme.dart';
+import '../library/library_screen.dart';
+import '../search/search_screen.dart';
+import '../settings/settings_screen.dart';
+import '../player/mini_player.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _index = 0;
+
+  final screens = [
+    const SearchScreen(),
+    const LibraryScreen(),
+    const SettingsScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    return Scaffold(
+      extendBody: true,
+      body: Stack(
+        children: [
+          // Main screen
+          IndexedStack(
+            index: _index,
+            children: screens,
+          ),
+
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 88,
+            child: MiniPlayer(),
+          ),
+        ],
+      ),
+
+      // Bottom Navigation
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Container(
+            color: Colors.white.withOpacity(0.08),
+            child: BottomNavigationBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              currentIndex: _index,
+              onTap: (i) => setState(() => _index = i),
+              items: [
+                BottomNavigationBarItem(
+                  icon: Icon(themeProvider.useGlassTheme
+                      ? CupertinoIcons.search
+                      : Icons.search),
+                  label: 'Search',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(themeProvider.useGlassTheme
+                      ? CupertinoIcons.music_albums
+                      : Icons.library_music),
+                  label: 'Library',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(themeProvider.useGlassTheme
+                      ? CupertinoIcons.settings
+                      : Icons.settings),
+                  label: 'Settings',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,175 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:hongit/core/theme/app_theme.dart';
+import 'package:marquee/marquee.dart';
+import 'package:provider/provider.dart';
+import '../../core/utils/audio_player_service.dart';
+import '../../core/utils/glass_container.dart';
+import 'full_player_sheet.dart';
+
+class MiniPlayer extends StatelessWidget {
+  const MiniPlayer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final player = AudioPlayerService();
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    return StreamBuilder<NowPlaying?>(
+      stream: player.nowPlayingStream,
+      builder: (context, snapshot) {
+        final now = snapshot.data;
+        if (now == null) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const FullPlayerSheet(),
+              );
+            },
+            child: GlassContainer(
+              borderRadius: BorderRadius.circular(24),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        now.imageUrl,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.music_note),
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _AutoMarqueeText(
+                            text: now.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          _AutoMarqueeText(
+                            text: now.artist,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(themeProvider.useGlassTheme
+                              ? CupertinoIcons.backward_end_fill
+                              : Icons.skip_previous),
+                          onPressed: player.skipPrevious,
+                        ),
+                        StreamBuilder(
+                          stream: player.playerStateStream,
+                          builder: (_, snap) {
+                            final playing = snap.data?.playing ?? false;
+                            return IconButton(
+                              iconSize: 34,
+                              icon: Icon(
+                                playing
+                                    ? themeProvider.useGlassTheme
+                                    ? CupertinoIcons.pause_circle_fill
+                                    : Icons.pause_circle_filled
+                                    : themeProvider.useGlassTheme
+                                    ? CupertinoIcons.play_circle_fill
+                                    : Icons.play_circle_filled,
+                              ),
+                              onPressed: player.togglePlayPause,
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(themeProvider.useGlassTheme
+                              ? CupertinoIcons.forward_end_fill
+                              : Icons.skip_next),
+                          onPressed: player.skipNext,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Auto marquee only if text overflows
+class _AutoMarqueeText extends StatelessWidget {
+  final String text;
+  final TextStyle style;
+
+  const _AutoMarqueeText({
+    required this.text,
+    required this.style,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        final painter = TextPainter(
+          text: TextSpan(text: text, style: style),
+          maxLines: 1,
+          textDirection: TextDirection.ltr,
+        )..layout();
+
+        final isOverflowing = painter.width > constraints.maxWidth;
+
+        if (!isOverflowing) {
+          return Text(
+            text,
+            style: style,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          );
+        }
+
+        return SizedBox(
+          height: (style.fontSize ?? 14) + 6,
+          child: Marquee(
+            text: text,
+            blankSpace: 32,
+            velocity: 28,
+            pauseAfterRound: const Duration(seconds: 1),
+            style: style,
+          ),
+        );
+      },
+    );
+  }
+}

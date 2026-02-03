@@ -1,0 +1,4 @@
+storePassword=examplePassword
+keyPassword=examplePassword
+keyAlias=hongeet
+storeFile=keystore/example.keystore
