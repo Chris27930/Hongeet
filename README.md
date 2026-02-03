@@ -52,49 +52,62 @@ It runs a **local backend inside the app**, streams directly from the source, an
 
 ---
 
-<h2 align=center> ✨ Features </h2>
+<h2 align="center">✨ Features</h2>
 
-<h3 align=center> 🎶 Streaming </h3>
+<div align="center">
+  <h3>🎶 Streaming</h3>
+  High-quality audio streaming<br>
+  Smart URL caching (faster repeat plays)<br>
+  Gapless playback with queue management
+</div>
 
-- High-quality audio streaming
-- Smart URL caching (faster repeat plays)
-- Gapless playback with queue management
+<br>
 
-<h3 align=center> 📥 Downloads </h3>
+<div align="center">
+  <h3>📥 Downloads</h3>
+  Download songs directly to device storage<br>
+  Uses yt-dlp under the hood<br>
+  Offline playback from local files
+</div>
 
-- Download songs directly to device storage
-- Uses yt-dlp under the hood
-- Offline playback from local files
+<br>
 
-<h3 align=center> 🧠 Smart Playback </h3>
+<div align="center">
+  <h3>🧠 Smart Playback</h3>
+  Recently Played history<br>
+  Loop modes (off / all / one)
+</div>
 
-- Recently Played history
-- Loop modes (off / all / one)
+<br>
 
-<h3 align=center> 🖤 UI / UX </h3>
+<div align="center">
+  <h3>🖤 UI / UX</h3>
+  Glassmorphism-inspired design<br>
+  Smooth animations<br>
+  Full-screen player with blur background<br>
+  Mini player support
+</div>
 
-- Glassmorphism-inspired design
-- Smooth animations
-- Full-screen player with blur background
-- Mini player support
+<br>
 
-<h3 align=center> 🔐 Local-First </h3>
+<div align="center">
+  <h3>🔐 Local-First</h3>
+  No external backend servers<br>
+  Everything runs on-device<br>
+  Your music stays with you
+</div>
 
-- No external backend servers
-- Everything runs on-device
-- Your music stays with you
+<hr>
 
----
+<h2 align="center">🚧 Upcoming Updates</h2>
 
-<h2 align=center> 🚧 Upcoming Updates </h2>
-
-Planned for future releases:
-
-- ⭐ Favourites system
-- 📂 Playlist support
-- 🔍 YouTube Music as alternate source
-- 🧹 Cache controls
-- 🎨 More theming options
+<div align="center">
+  ⭐ Favourites system<br>
+  📂 Playlist support<br>
+  🔍 YouTube Music as alternate source<br>
+  🧹 Cache controls<br>
+  🎨 More theming options
+</div>
 
 ---
 
