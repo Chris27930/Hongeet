@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/glass_container.dart';
 import '../../core/utils/glass_page.dart';
 import '../../data/api/local_backend_api.dart';
+import '../../core/utils/audio_player_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -91,6 +92,44 @@ class SettingsScreen extends StatelessWidget {
               onChanged: (_) {},
               title: const Text('Youtube Service'),
               subtitle: const Text('Use Youtube as the music Service'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GlassContainer(
+            child: ListTile(
+              leading: const Icon(Icons.cached),
+              title: const Text('Clear stream cache'),
+              subtitle: const Text('Temporary streaming data'),
+              onTap: () {
+                if (AudioPlayerService().isPlaying) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Pause playback before clearing cache'),
+                    ),
+                  );
+                  return;
+                }
+                AudioPlayerService().clearStreamCache();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Stream cache cleared')),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          GlassContainer(
+            child: ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text('Clear recently played'),
+              subtitle: const Text('Removes playback history'),
+              onTap: () async {
+                await AudioPlayerService().clearRecentlyPlayed();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Recently played cleared'),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 12),

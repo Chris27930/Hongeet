@@ -285,14 +285,11 @@ class AudioPlayerService {
   Future<void> setLoopMode(LoopMode mode) => _player.setLoopMode(mode);
 
   void _onPlayerStateChanged(PlayerState state) {
-    // Handle automatic next song when current finishes
     if (state.processingState == ProcessingState.completed) {
       if (_player.loopMode == LoopMode.one) {
-        // Restart current song
         _player.seek(Duration.zero);
         _player.play();
       } else if (_player.loopMode == LoopMode.all || _currentIndex + 1 < _queue.length) {
-        // Auto-advance to next
         skipNext();
       } else {
         print('🏁 Playback completed');
@@ -312,9 +309,37 @@ class AudioPlayerService {
     await _loadRecentlyPlayed();
   }
 
-  void clearCache() {
+  void clearStreamCache() {
     _urlCache.clear();
   }
+
+  Future<void> clearRecentlyPlayed() async {
+    await RecentlyPlayedCache.clear();
+    _recentlyPlayedSubject.add([]);
+  }
+
+  Map<String, int> getStreamCacheStats() {
+    final now = DateTime.now();
+    int fresh = 0;
+    int stale = 0;
+
+    for (final entry in _urlCache.values) {
+      final age = now.difference(entry.timestamp);
+      if (age.inHours < 24) {
+        fresh++;
+      } else {
+        stale++;
+      }
+    }
+
+    return {
+      'total': _urlCache.length,
+      'fresh': fresh,
+      'stale': stale,
+    };
+  }
+
+  bool get isPlaying => _player.playing;
 
   Map<String, dynamic> getCacheStats() {
     final now = DateTime.now();

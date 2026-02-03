@@ -24,4 +24,9 @@ class RecentlyPlayedCache {
     final raw = prefs.getStringList(_key) ?? [];
     return raw.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
   }
+
+  static Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key);
+  }
 }

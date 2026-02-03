@@ -40,6 +40,7 @@ dependencies:
   rxdart: ^0.27.7
   marquee: ^2.2.3
   shared_preferences: ^2.2.3
+  permission_handler: ^11.3.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
