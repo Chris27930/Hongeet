@@ -6,7 +6,8 @@
 
 <p align="center">
   <img src="https://skillicons.dev/icons?i=flutter,dart,kotlin,git" /><br>
-  <img alt="GitHub Release" src="https://img.shields.io/github/v/release/greenbugx/Hongeet?display_name=release&style=for-the-badge&color=f01d7c" >
+  <img alt="GitHub Release" src="https://img.shields.io/github/v/release/greenbugx/Hongeet?display_name=release&style=for-the-badge&color=000000" />
+  <img alt="GitHub License" src="https://img.shields.io/github/license/greenbugx/Hongeet?display_name=release&style=for-the-badge&color=ffffff" /> 
 </p>
 
 ---
@@ -17,7 +18,7 @@ _HONGEET is a **local-first music app** that lets you
 Built for people who care about **audio quality**, **performance**, and **ownership**.
 
 
-## 📖 Whats HONGEET?
+<h2 align=center> 📖 Whats HONGEET? </h2>
 
 HONGEET was built to solve a simple problem:
 
@@ -35,7 +36,7 @@ It runs a **local backend inside the app**, streams directly from the source, an
 
 ---
 
-### 📸 Screenshots
+<h3 align=center> 📸 Screenshots </h3>
 
 <p align="center">
   <img src="assets/screenshots/1.jpg" width="260" />
@@ -50,33 +51,33 @@ It runs a **local backend inside the app**, streams directly from the source, an
 
 ---
 
-## ✨ Features
+<h2 align=center> ✨ Features </h2>
 
-### 🎶 Streaming
+<h3 align=center> 🎶 Streaming </h3>
 
 - High-quality audio streaming
 - Smart URL caching (faster repeat plays)
 - Gapless playback with queue management
 
-### 📥 Downloads
+<h3 align=center> 📥 Downloads </h3>
 
 - Download songs directly to device storage
 - Uses yt-dlp under the hood
 - Offline playback from local files
 
-### 🧠 Smart Playback
+<h3 align=center> 🧠 Smart Playback </h3>
 
 - Recently Played history
 - Loop modes (off / all / one)
 
-### 🖤 UI / UX
+<h3 align=center> 🖤 UI / UX </h3>
 
 - Glassmorphism-inspired design
 - Smooth animations
 - Full-screen player with blur background
 - Mini player support
 
-### 🔐 Local-First
+<h3 align=center> 🔐 Local-First </h3>
 
 - No external backend servers
 - Everything runs on-device
@@ -84,7 +85,7 @@ It runs a **local backend inside the app**, streams directly from the source, an
 
 ---
 
-## 🚧 Upcoming Updates
+<h2 align=center> 🚧 Upcoming Updates </h2>
 
 Planned for future releases:
 
@@ -96,7 +97,7 @@ Planned for future releases:
 
 ---
 
-## 🤝 Contributing
+<h2 align=center> 🤝 Contributing </h2>
 
 Contributions are welcome.
 
@@ -114,9 +115,11 @@ You can help by:
 - Commit clean, meaningful changes
 - Open a Pull Request
 
+_For detailed info about Contributing to this project, please check [CONTRIBUTING](CONTRIBUTING.md)
+
 ---
 
-## ⚠️ Disclaimer
+<h2 align=center> ⚠️ Disclaimer </h2>
 
 _HONGEET is a personal / educational project._
 
@@ -129,7 +132,7 @@ _If you are a rights holder and believe something is wrong, please open an issue
 
 ---
 
-## 📜 License
+<h2 align=center> 📜 License </h2>
 
 _This project is licensed under the GNU-GPLv3 or later. Check [LICENSE](LICENSE) for License info._
 
@@ -141,9 +144,15 @@ _Meanwhile you are free to:_
 
 _With **PROPER ATTRIBUTION**_
 
+<h2 align=center> But </h2>
+
+- Copied/Modified version of this software can not be used for 'non-free' and profit purposes.
+- You can not publish copied/modified version of this app on closed source app repository
+  like PlayStore/AppStore.
+
 ---
 
-## ❤️ Credits & Thanks
+<h2 align=center> ❤️ Credits & Thanks </h2>
 
 Huge respect and thanks to:
 
@@ -155,13 +164,8 @@ This project wouldn’t exist without them.
 
 ---
 
-## 🌱 Outro
+_<h5 align=center> HONGEET started as an experiment. </h5>_
 
-_HONGEET started as an experiment._
+_<h4 align=center> It became a challenge. </h4>_
 
-_It became a challenge._
-
-_Then it became an app._
-
-Thanks for checking it out.
-More updates soon. 🚀🎧
+_<h2 align=center> Then it became an app. 🚀🎧 </h2>_
