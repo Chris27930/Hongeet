@@ -7,7 +7,6 @@
 <p align="center">
   <img src="https://skillicons.dev/icons?i=flutter,dart,kotlin,git" /><br>
   <img alt="GitHub Release" src="https://img.shields.io/github/v/release/greenbugx/Hongeet?display_name=release&style=for-the-badge&color=f01d7c" >
-  <img alt="GitHub License" src="https://img.shields.io/github/license/greenbugx/Hongeet?style=for-the-badge&color=1881cc" />
 </p>
 
 ---
