@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:hongit/core/theme/app_theme.dart';
 import 'package:hongit/core/utils/audio_player_service.dart';
 import 'package:hongit/data/api/saavn_api.dart';
+import 'package:hongit/data/api/youtube_api.dart';
 import 'package:hongit/data/models/saavn_song.dart';
 import 'package:hongit/features/search/widgets/song_card.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/utils/glass_container.dart';
 import '../../core/utils/glass_page.dart';
 
@@ -22,6 +24,8 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<List<SaavnSong>>? _searchFuture;
   String _lastQuery = '';
   Timer? _debounce;
+  static final Map<String, _SessionSearchCacheEntry> _sessionSearchCache = {};
+  static const int _maxSessionCacheEntries = 80;
 
   static const int minSearchLength = 2;
 
@@ -30,7 +34,66 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    _searchFuture = SaavnApi.searchSongs('eminem');
+    _searchFuture = _performSearch('trending music');
+  }
+
+  Future<void> _refreshSearch() async {
+    final query = _controller.text.trim();
+    setState(() {
+      if (query.isEmpty) {
+        _lastQuery = '';
+        _searchFuture = _performSearch('trending music', forceRefresh: true);
+      } else if (query.length < minSearchLength) {
+        _searchFuture = null;
+      } else {
+        _lastQuery = query;
+        _searchFuture = _performSearch(query, forceRefresh: true);
+      }
+    });
+    await _searchFuture?.catchError((_) => <SaavnSong>[]);
+  }
+
+  Future<List<SaavnSong>> _performSearch(
+    String query, {
+    bool forceRefresh = false,
+  }) async {
+    final normalizedQuery = query.trim();
+    if (normalizedQuery.isEmpty) return [];
+
+    final prefs = await SharedPreferences.getInstance();
+    final useYoutube = prefs.getBool('use_youtube_service') ?? false;
+    final cacheKey =
+        '${useYoutube ? "yt" : "saavn"}:${normalizedQuery.toLowerCase()}';
+
+    if (!forceRefresh) {
+      final cached = _sessionSearchCache[cacheKey];
+      if (cached != null) {
+        return cached.songs;
+      }
+    }
+
+    final List<SaavnSong> songs;
+
+    if (useYoutube) {
+      print('Using YouTube service for search: "$normalizedQuery"');
+      songs = await YoutubeApi.searchSongs(normalizedQuery);
+    } else {
+      print('Using Saavn service for search: "$normalizedQuery"');
+      songs = await SaavnApi.searchSongs(normalizedQuery);
+    }
+
+    _sessionSearchCache[cacheKey] = _SessionSearchCacheEntry(
+      songs: List<SaavnSong>.unmodifiable(songs),
+    );
+    _trimSessionSearchCache();
+
+    return _sessionSearchCache[cacheKey]!.songs;
+  }
+
+  void _trimSessionSearchCache() {
+    while (_sessionSearchCache.length > _maxSessionCacheEntries) {
+      _sessionSearchCache.remove(_sessionSearchCache.keys.first);
+    }
   }
 
   void _onSearchChanged(String query) {
@@ -40,7 +103,7 @@ class _SearchScreenState extends State<SearchScreen> {
     if (trimmed.isEmpty) {
       setState(() {
         _lastQuery = '';
-        _searchFuture = SaavnApi.searchSongs('eminem');
+        _searchFuture = _performSearch('trending music');
       });
       return;
     }
@@ -57,7 +120,7 @@ class _SearchScreenState extends State<SearchScreen> {
       if (trimmed == _lastQuery) return;
       setState(() {
         _lastQuery = trimmed;
-        _searchFuture = SaavnApi.searchSongs(trimmed);
+        _searchFuture = _performSearch(trimmed);
       });
     });
   }
@@ -74,67 +137,76 @@ class _SearchScreenState extends State<SearchScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return GlassPage(
-      child: ListView(
-        children: [
-          const Text(
-            'Welcome to\nHongeet',
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 20),
+      child: RefreshIndicator(
+        onRefresh: _refreshSearch,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            const Text(
+              'Welcome to\nHongeet',
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 20),
 
-          // Search Bar
-          GlassContainer(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
-                controller: _controller,
-                onChanged: _onSearchChanged,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  icon: Icon(
+            // Search Bar
+            GlassContainer(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  controller: _controller,
+                  onChanged: _onSearchChanged,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    icon: Icon(
                       themeProvider.useGlassTheme
                           ? CupertinoIcons.search
                           : Icons.search,
-                      color: Colors.white70),
-                  hintText: 'Search songs, artists...',
-                  hintStyle: const TextStyle(color: Colors.white54),
-                  border: InputBorder.none,
-                  suffixIcon: _controller.text.isNotEmpty
-                      ? IconButton(
-                    icon: Icon(
-                        themeProvider.useGlassTheme
-                            ? CupertinoIcons.clear_circled_solid
-                            : Icons.close,
-                        color: Colors.white70),
-                    onPressed: () {
-                      _controller.clear();
-                      _onSearchChanged('');
-                    },
-                  )
-                      : null,
+                      color: Colors.white70,
+                    ),
+                    hintText: 'Search songs, artists...',
+                    hintStyle: const TextStyle(color: Colors.white54),
+                    border: InputBorder.none,
+                    suffixIcon: _controller.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(
+                              themeProvider.useGlassTheme
+                                  ? CupertinoIcons.clear_circled_solid
+                                  : Icons.close,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () {
+                              _controller.clear();
+                              _onSearchChanged('');
+                            },
+                          )
+                        : null,
+                  ),
                 ),
               ),
             ),
-          ),
 
-          const SizedBox(height: 28),
+            const SizedBox(height: 28),
 
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: Text(
-              isSearching ? 'Search Results' : 'Quick Picks',
-              key: ValueKey(isSearching),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Text(
+                isSearching ? 'Search Results' : 'Quick Picks',
+                key: ValueKey(isSearching),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
-          ),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Results
-          _buildSearchResults(context),
+            // Results
+            _buildSearchResults(context),
 
-          const SizedBox(height: 80),
-        ],
+            const SizedBox(height: 80),
+          ],
+        ),
       ),
     );
   }
@@ -187,11 +259,13 @@ class _SearchScreenState extends State<SearchScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'API might be down or network issue',
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton(
+                    onPressed: _refreshSearch,
+                    child: const Text('Retry'),
                   ),
                 ],
               ),
@@ -211,17 +285,22 @@ class _SearchScreenState extends State<SearchScreen> {
           );
         }
 
-        final songs = snapshot.data!;
+        final songs = List<SaavnSong>.from(snapshot.data!);
+        if (songs.length >= 2 && songs.length.isOdd) {
+          songs.removeLast();
+        }
 
         final queuedSongs = songs
-            .map((s) => QueuedSong(
-          id: s.id,
-          meta: NowPlaying(
-            title: s.name,
-            artist: s.artists,
-            imageUrl: s.imageUrl,
-          ),
-        ))
+            .map(
+              (s) => QueuedSong(
+                id: s.id,
+                meta: NowPlaying(
+                  title: s.name,
+                  artist: s.artists,
+                  imageUrl: s.imageUrl,
+                ),
+              ),
+            )
             .toList();
 
         return GridView.builder(
@@ -254,4 +333,10 @@ class _SearchScreenState extends State<SearchScreen> {
       },
     );
   }
+}
+
+class _SessionSearchCacheEntry {
+  final List<SaavnSong> songs;
+
+  const _SessionSearchCacheEntry({required this.songs});
 }

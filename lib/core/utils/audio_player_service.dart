@@ -1,6 +1,8 @@
 import 'package:just_audio/just_audio.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../data/api/saavn_song_api.dart';
+import '../../data/api/youtube_song_api.dart';
+import '../../data/api/youtube_api.dart';
 import '../../features/library/recently_played_cache.dart';
 import '../../features/library/playlist_manager.dart';
 
@@ -21,15 +23,10 @@ class QueuedSong {
   final NowPlaying meta;
   final bool isLocal;
 
-  QueuedSong({
-    required this.id,
-    required this.meta,
-    this.isLocal = false,
-  });
+  QueuedSong({required this.id, required this.meta, this.isLocal = false});
 }
 
 class AudioPlayerService {
-
   static final AudioPlayerService _instance = AudioPlayerService._internal();
   factory AudioPlayerService() => _instance;
 
@@ -47,7 +44,6 @@ class AudioPlayerService {
   List<QueuedSong> get queue => List.unmodifiable(_queue);
 
   int _currentIndex = 0;
-
   int _playToken = 0;
 
   String? _loadedSongId;
@@ -70,21 +66,63 @@ class AudioPlayerService {
   LoopMode get loopMode => _player.loopMode;
 
   final Map<String, _CachedUrl> _urlCache = {};
+  final Map<String, int> _youtubeRetryCount = {};
 
-  Future<String> _resolveUrl(String id) async {
-    if (_urlCache.containsKey(id)) {
-      final cached = _urlCache[id]!;
+  static const Map<String, String> _defaultStreamHeaders = {
+    'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': '*/*',
+    'Accept-Language': 'en-US,en;q=0.9',
+  };
+
+  Future<_ResolvedStream> _resolveUrl(String id) async {
+    final cacheKey = id;
+    final bool isYoutube = id.startsWith('yt:');
+
+    if (_urlCache.containsKey(cacheKey)) {
+      final cached = _urlCache[cacheKey]!;
       final age = DateTime.now().difference(cached.timestamp);
-      if (age.inHours < 24) {
-        return cached.url;
+
+      final maxAge = isYoutube ? 1 : 24;
+
+      if (age.inHours < maxAge) {
+        print('Using cached URL for $cacheKey (age: ${age.inMinutes}m)');
+        return _ResolvedStream(
+          url: cached.url,
+          headers: cached.headers ?? const {},
+        );
       } else {
-        _urlCache.remove(id);
+        print(
+          'Cache expired for $cacheKey (age: ${age.inHours}h), fetching fresh URL',
+        );
+        _urlCache.remove(cacheKey);
       }
     }
-    final url = await SaavnSongApi.fetchBestStreamUrl(id);
-    _urlCache[id] = _CachedUrl(url: url, timestamp: DateTime.now());
+
+    final String url;
+    final Map<String, String> headers;
+
+    if (isYoutube) {
+      final videoId = id.substring(3);
+      print('Using YouTube service for playback: $videoId');
+      final extracted = await YoutubeSongApi.fetchBestStream(videoId);
+      url = extracted.url;
+      headers = extracted.headers;
+    } else {
+      print('Using Saavn service for playback: $id');
+      url = await SaavnSongApi.fetchBestStreamUrl(id);
+      headers = const {};
+    }
+
+    _urlCache[cacheKey] = _CachedUrl(
+      url: url,
+      headers: headers.isEmpty ? null : headers,
+      timestamp: DateTime.now(),
+    );
+
     if (_urlCache.length > 500) _cleanCache();
-    return url;
+
+    return _ResolvedStream(url: url, headers: headers);
   }
 
   void _cleanCache() {
@@ -100,17 +138,16 @@ class AudioPlayerService {
     _recentlyPlayedSubject.add(items);
   }
 
-
   Future<void> _loadAndPlaySong(int index, int token) async {
     if (index < 0 || index >= _queue.length) {
-      print('⚠️ Invalid index: $index (queue length: ${_queue.length})');
+      print('Invalid index: $index (queue length: ${_queue.length})');
       return;
     }
 
     final song = _queue[index];
 
     if (token != _playToken) {
-      print('🚫 Stale load request for index $index (token mismatch)');
+      print('Stale load request for index $index (token mismatch)');
       return;
     }
 
@@ -120,18 +157,21 @@ class AudioPlayerService {
 
       if (token != _playToken) return;
 
-      final String url;
+      final _ResolvedStream resolved;
       if (song.isLocal) {
-        url = song.id;
+        resolved = _ResolvedStream(url: song.id, headers: const {});
       } else {
-        url = await _resolveUrl(song.id);
+        resolved = await _resolveUrl(song.id);
       }
 
       if (token != _playToken) return;
 
       final source = song.isLocal
-          ? AudioSource.uri(Uri.file(url))
-          : AudioSource.uri(Uri.parse(url));
+          ? AudioSource.uri(Uri.file(resolved.url))
+          : AudioSource.uri(
+              Uri.parse(resolved.url),
+              headers: {..._defaultStreamHeaders, ...resolved.headers},
+            );
 
       await _player.setAudioSource(source);
 
@@ -145,10 +185,44 @@ class AudioPlayerService {
       await _player.play();
 
       await _addToRecentlyPlayed(song);
+      _youtubeRetryCount.remove(song.id);
 
-      print('✅ Successfully loaded and playing: ${song.meta.title} (index: $index)');
+      print(
+        'Successfully loaded and playing: ${song.meta.title} (index: $index)',
+      );
+    } on PlayerException catch (e) {
+      print('PlayerException at index $index: ${e.code} - ${e.message}');
+
+      final errText = '${e.code} ${e.message ?? ''} $e';
+      if (song.id.startsWith('yt:') && errText.contains('403')) {
+        final attempts = (_youtubeRetryCount[song.id] ?? 0) + 1;
+        _youtubeRetryCount[song.id] = attempts;
+        _urlCache.remove(song.id);
+
+        if (attempts <= 2) {
+          print(
+            'YouTube 403 detected, retrying current track with fresh extraction (attempt $attempts)',
+          );
+          final retryToken = ++_playToken;
+          await Future.delayed(const Duration(milliseconds: 250));
+          await _loadAndPlaySong(index, retryToken);
+          return;
+        }
+
+        _youtubeRetryCount.remove(song.id);
+        print('YouTube 403 persists after retries, skipping track');
+        if (_currentIndex + 1 < _queue.length) {
+          await Future.delayed(const Duration(milliseconds: 500));
+          await skipNext();
+        }
+      }
     } catch (e) {
-      print('❌ Failed to load song at index $index: $e');
+      print('Failed to load song at index $index: $e');
+
+      if (_currentIndex + 1 < _queue.length) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        await skipNext();
+      }
     }
   }
 
@@ -157,7 +231,7 @@ class AudioPlayerService {
     required int startIndex,
   }) async {
     if (songs.isEmpty) {
-      print('⚠️ Cannot play from empty list');
+      print('Cannot play from empty list');
       return;
     }
 
@@ -165,7 +239,9 @@ class AudioPlayerService {
 
     final safeIndex = startIndex.clamp(0, songs.length - 1);
 
-    print('🎵 playFromList called: ${songs.length} songs, starting at index $safeIndex');
+    print(
+      'playFromList called: ${songs.length} songs, starting at index $safeIndex',
+    );
 
     _queue = List.unmodifiable(songs);
 
@@ -189,16 +265,13 @@ class AudioPlayerService {
       );
     }).toList();
 
-    await playFromList(
-      songs: queued,
-      startIndex: 0,
-    );
+    await playFromList(songs: queued, startIndex: 0);
   }
 
   Future<void> playNow(QueuedSong song) async {
     final int token = ++_playToken;
 
-    print('🎵 playNow called: ${song.meta.title}');
+    print('playNow called: ${song.meta.title}');
 
     _queue = List.unmodifiable([song]);
 
@@ -236,12 +309,13 @@ class AudioPlayerService {
 
     final nextIndex = _currentIndex + 1;
 
-    // Handle loop mode
+    _maybeExtendYoutubeQueue();
+
     if (nextIndex >= _queue.length) {
       if (_player.loopMode == LoopMode.all) {
         await jumpToIndex(0);
       } else {
-        print(' Reached end of queue');
+        print('Reached end of queue');
       }
       return;
     }
@@ -260,12 +334,10 @@ class AudioPlayerService {
 
     final prevIndex = _currentIndex - 1;
 
-    // Handle loop mode
     if (prevIndex < 0) {
       if (_player.loopMode == LoopMode.all) {
         await jumpToIndex(_queue.length - 1);
       } else {
-        // Restart current song
         await _player.seek(Duration.zero);
       }
       return;
@@ -274,9 +346,49 @@ class AudioPlayerService {
     await jumpToIndex(prevIndex);
   }
 
+  Future<void> _maybeExtendYoutubeQueue() async {
+    if (_queue.isEmpty) return;
+    if (_currentIndex < 0 || _currentIndex >= _queue.length) return;
+
+    final current = _queue[_currentIndex];
+    if (!current.id.startsWith('yt:')) return;
+
+    final remaining = _queue.length - _currentIndex - 1;
+    if (remaining > 5) return;
+
+    final videoId = current.id.substring(3);
+    print('Extending YouTube queue using related tracks for $videoId');
+
+    try {
+      final related = await YoutubeApi.relatedSongs(videoId, take: 10);
+      final existingIds = _queue.map((s) => s.id).toSet();
+
+      final additions = related
+          ?.where((s) => !existingIds.contains(s.id))
+          .map(
+            (s) => QueuedSong(
+              id: s.id,
+              meta: NowPlaying(
+                title: s.name,
+                artist: s.artists,
+                imageUrl: s.imageUrl,
+              ),
+            ),
+          )
+          .toList();
+
+      if (additions == null || additions.isEmpty) return;
+
+      _queue = List<QueuedSong>.from(_queue)..addAll(additions);
+      print('Added ${additions.length} YouTube recommendations to the queue');
+    } catch (e) {
+      print('Failed to extend YouTube queue: $e');
+    }
+  }
+
   Future<void> jumpToIndex(int queueIndex) async {
     if (queueIndex < 0 || queueIndex >= _queue.length) {
-      print('⚠️ Invalid jump index: $queueIndex');
+      print('Invalid jump index: $queueIndex');
       return;
     }
 
@@ -315,10 +427,11 @@ class AudioPlayerService {
       if (_player.loopMode == LoopMode.one) {
         _player.seek(Duration.zero);
         _player.play();
-      } else if (_player.loopMode == LoopMode.all || _currentIndex + 1 < _queue.length) {
+      } else if (_player.loopMode == LoopMode.all ||
+          _currentIndex + 1 < _queue.length) {
         skipNext();
       } else {
-        print('🏁 Playback completed');
+        print('Playback completed');
       }
     }
   }
@@ -337,6 +450,7 @@ class AudioPlayerService {
 
   void clearStreamCache() {
     _urlCache.clear();
+    print('Stream cache cleared');
   }
 
   Future<void> clearRecentlyPlayed() async {
@@ -351,18 +465,15 @@ class AudioPlayerService {
 
     for (final entry in _urlCache.values) {
       final age = now.difference(entry.timestamp);
-      if (age.inHours < 24) {
+      final maxAge = entry.url.contains('youtube') ? 1 : 24;
+      if (age.inHours < maxAge) {
         fresh++;
       } else {
         stale++;
       }
     }
 
-    return {
-      'total': _urlCache.length,
-      'fresh': fresh,
-      'stale': stale,
-    };
+    return {'total': _urlCache.length, 'fresh': fresh, 'stale': stale};
   }
 
   bool get isPlaying => _player.playing;
@@ -373,7 +484,8 @@ class AudioPlayerService {
     int stale = 0;
     for (final entry in _urlCache.values) {
       final age = now.difference(entry.timestamp);
-      if (age.inHours < 24) {
+      final maxAge = entry.url.contains('youtube') ? 1 : 24;
+      if (age.inHours < maxAge) {
         fresh++;
       } else {
         stale++;
@@ -392,6 +504,15 @@ class AudioPlayerService {
 
 class _CachedUrl {
   final String url;
+  final Map<String, String>? headers;
   final DateTime timestamp;
-  _CachedUrl({required this.url, required this.timestamp});
+
+  _CachedUrl({required this.url, this.headers, required this.timestamp});
+}
+
+class _ResolvedStream {
+  final String url;
+  final Map<String, String> headers;
+
+  const _ResolvedStream({required this.url, this.headers = const {}});
 }

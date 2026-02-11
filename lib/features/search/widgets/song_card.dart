@@ -6,11 +6,7 @@ class SongCard extends StatelessWidget {
   final SaavnSong song;
   final VoidCallback? onTap;
 
-  const SongCard({
-    super.key,
-    required this.song,
-    this.onTap,
-  });
+  const SongCard({super.key, required this.song, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -30,17 +26,28 @@ class SongCard extends StatelessWidget {
                   top: Radius.circular(18),
                 ),
                 child: song.imageUrl.isNotEmpty
-                    ? Image.network(
-                  song.imageUrl,
-                  fit: BoxFit.cover,
-                )
+                    ? Transform.scale(
+                        scale: 1.08,
+                        child: Image.network(
+                          song.imageUrl,
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.center,
+                          filterQuality: FilterQuality.medium,
+                          errorBuilder: (_, error, stackTrace) => Container(
+                            color: Colors.black26,
+                            child: const Icon(
+                              Icons.music_note_rounded,
+                              size: 40,
+                            ),
+                          ),
+                        ),
+                      )
                     : Container(
-                  color: Colors.black26,
-                  child: const Icon(
-                    Icons.music_note_rounded,
-                    size: 40,
-                  ),
-                ),
+                        color: Colors.black26,
+                        child: const Icon(Icons.music_note_rounded, size: 40),
+                      ),
               ),
             ),
 
