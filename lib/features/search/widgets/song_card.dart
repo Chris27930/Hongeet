@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/fallback_network_image.dart';
+import '../../../core/utils/youtube_thumbnail_utils.dart';
 import '../../../core/utils/glass_container.dart';
 import '../../../data/models/saavn_song.dart';
 
@@ -11,6 +13,10 @@ class SongCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = song.imageUrl.trim();
+    final imageCandidates = YoutubeThumbnailUtils.candidateUrls(
+      songId: song.id,
+      imageUrl: imageUrl,
+    );
 
     return GlassContainer(
       borderRadius: BorderRadius.circular(18),
@@ -28,17 +34,19 @@ class SongCard extends StatelessWidget {
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(18),
                 ),
-                child: imageUrl.isNotEmpty
+                child: imageCandidates.isNotEmpty
                     ? Transform.scale(
                         scale: 2.0,
-                        child: Image.network(
-                          imageUrl,
+                        child: FallbackNetworkImage(
+                          urls: imageCandidates,
                           width: double.infinity,
                           height: double.infinity,
+                          cacheWidth: 640,
+                          cacheHeight: 640,
                           fit: BoxFit.cover,
                           alignment: Alignment.center,
                           filterQuality: FilterQuality.medium,
-                          errorBuilder: (_, error, stackTrace) => Container(
+                          fallback: Container(
                             color: Colors.black26,
                             child: const Icon(
                               Icons.music_note_rounded,

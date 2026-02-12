@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/glass_container.dart';
 import '../../core/utils/glass_page.dart';
-import '../../data/api/local_backend_api.dart';
 import '../../core/utils/audio_player_service.dart';
 import '../../core/utils/battery_optimization_handler.dart';
 
@@ -139,9 +138,70 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
+  bool _canUseGlassTheme(BuildContext context) {
+    return !ThemeProvider.isLowEndLikely(context);
+  }
+
+  String _progressBarStyleLabel(ProgressBarStyle style) {
+    switch (style) {
+      case ProgressBarStyle.defaultStyle:
+        return 'Default';
+      case ProgressBarStyle.snake:
+        return 'Snake';
+      case ProgressBarStyle.glass:
+        return 'Glass';
+    }
+  }
+
+  String _progressBarStyleHint(ProgressBarStyle style) {
+    switch (style) {
+      case ProgressBarStyle.defaultStyle:
+        return 'Standard seek bar';
+      case ProgressBarStyle.snake:
+        return 'Curved static track with moving head';
+      case ProgressBarStyle.glass:
+        return 'Glass-styled seek bar';
+    }
+  }
+
+  String _uiPerformanceLabel(UiPerformanceMode mode) {
+    switch (mode) {
+      case UiPerformanceMode.auto:
+        return 'Auto';
+      case UiPerformanceMode.smooth:
+        return 'Smooth';
+      case UiPerformanceMode.full:
+        return 'Full';
+    }
+  }
+
+  String _uiPerformanceHint(ThemeProvider themeProvider, BuildContext context) {
+    if (themeProvider.useGlassTheme) {
+      return 'This setting makes no change when Glass Theme is enabled.';
+    }
+
+    final resolved = themeProvider.resolvedUiPerformanceMode(context);
+    switch (themeProvider.uiPerformanceMode) {
+      case UiPerformanceMode.auto:
+        return 'Auto-selected: ${_uiPerformanceLabel(resolved)}';
+      case UiPerformanceMode.smooth:
+        return 'Lower motion and lighter rendering';
+      case UiPerformanceMode.full:
+        return 'Best visual quality and motion';
+    }
+  }
+
+  List<ProgressBarStyle> _availableProgressStyles(ThemeProvider themeProvider) {
+    if (themeProvider.useGlassTheme) {
+      return ProgressBarStyle.values;
+    }
+    return const [ProgressBarStyle.defaultStyle, ProgressBarStyle.snake];
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final canUseGlassTheme = _canUseGlassTheme(context);
 
     return GlassPage(
       child: ListView(
@@ -171,64 +231,95 @@ class _SettingsScreenState extends State<SettingsScreen>
           ],
 
           GlassContainer(
-            child: ListTile(
-              leading: Icon(
-                themeProvider.useGlassTheme
-                    ? CupertinoIcons.heart_circle
-                    : Icons.favorite_border,
-              ),
-              title: const Text('Backend Health'),
-              subtitle: const Text('Tap to test local server'),
-              onTap: () async {
-                final res = await LocalBackendApi.health();
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text(res.toString())));
-              },
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          GlassContainer(
-            child: ListTile(
-              leading: Icon(
-                themeProvider.useGlassTheme
-                    ? CupertinoIcons.arrow_down_circle
-                    : Icons.downloading,
-              ),
-              title: const Text('Download Health'),
-              subtitle: const Text('Tap to test download server'),
-              onTap: () async {
-                try {
-                  await LocalBackendApi.downloadSaavn(
-                    title: 'Downloads Working!',
-                    songId: '1ZDlyUiL',
-                  );
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Download queued!')),
-                  );
-                } catch (e) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Download failed: $e')),
-                  );
-                }
-              },
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          GlassContainer(
             child: SwitchListTile(
               value: themeProvider.useGlassTheme,
-              onChanged: (_) => themeProvider.toggleTheme(),
+              onChanged: (enabled) {
+                if (enabled && !canUseGlassTheme) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Glass theme may feel laggy on this device.',
+                      ),
+                    ),
+                  );
+                }
+                themeProvider.setUseGlassTheme(enabled);
+              },
               title: const Text('Glass UI Theme'),
-              subtitle: const Text(
-                'Use iOS 26 glass UI Theme. Might be laggy in some low-end mobiles.',
+              subtitle: Text(
+                canUseGlassTheme
+                    ? 'Use iOS 26 glass UI Theme.'
+                    : 'May lag on low-end devices.',
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          GlassContainer(
+            child: ListTile(
+              leading: Icon(
+                themeProvider.useGlassTheme
+                    ? CupertinoIcons.speedometer
+                    : Icons.speed,
+              ),
+              title: const Text('UI performance'),
+              subtitle: Text(_uiPerformanceHint(themeProvider, context)),
+              trailing: DropdownButtonHideUnderline(
+                child: DropdownButton<UiPerformanceMode>(
+                  value: themeProvider.uiPerformanceMode,
+                  isDense: true,
+                  onChanged: themeProvider.useGlassTheme
+                      ? null
+                      : (mode) {
+                          if (mode != null) {
+                            themeProvider.setUiPerformanceMode(mode);
+                          }
+                        },
+                  items: UiPerformanceMode.values
+                      .map(
+                        (mode) => DropdownMenuItem<UiPerformanceMode>(
+                          value: mode,
+                          child: Text(_uiPerformanceLabel(mode)),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          GlassContainer(
+            child: ListTile(
+              leading: Icon(
+                themeProvider.useGlassTheme
+                    ? CupertinoIcons.waveform_path_ecg
+                    : Icons.multitrack_audio,
+              ),
+              title: const Text('Progress bar style'),
+              subtitle: Text(
+                _progressBarStyleHint(themeProvider.effectiveProgressBarStyle),
+              ),
+              trailing: DropdownButtonHideUnderline(
+                child: DropdownButton<ProgressBarStyle>(
+                  value: themeProvider.effectiveProgressBarStyle,
+                  isDense: true,
+                  onChanged: (style) {
+                    if (style != null) {
+                      themeProvider.setProgressBarStyle(style);
+                    }
+                  },
+                  items: _availableProgressStyles(themeProvider)
+                      .map(
+                        (style) => DropdownMenuItem<ProgressBarStyle>(
+                          value: style,
+                          child: Text(_progressBarStyleLabel(style)),
+                        ),
+                      )
+                      .toList(),
+                ),
               ),
             ),
           ),
@@ -292,6 +383,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               subtitle: const Text('Removes playback history'),
               onTap: () async {
                 await AudioPlayerService().clearRecentlyPlayed();
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Recently played cleared')),
                 );
@@ -309,7 +401,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     : Icons.info_outline,
               ),
               title: const Text('About'),
-              subtitle: const Text('Version, licenses'),
+              subtitle: const Text('Version, license'),
               trailing: Icon(
                 themeProvider.useGlassTheme
                     ? CupertinoIcons.right_chevron

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:just_audio/just_audio.dart';
 import 'package:rxdart/rxdart.dart';
+import 'app_logger.dart';
 import '../../data/api/saavn_song_api.dart';
 import '../../data/api/youtube_song_api.dart';
 import '../../data/api/youtube_api.dart';
@@ -92,13 +93,15 @@ class AudioPlayerService {
       final maxAge = isYoutube ? 1 : 24;
 
       if (age.inHours < maxAge) {
-        print('Using cached URL for $cacheKey (age: ${age.inMinutes}m)');
+        AppLogger.info(
+          'Using cached URL for $cacheKey (age: ${age.inMinutes}m)',
+        );
         return _ResolvedStream(
           url: cached.url,
           headers: cached.headers ?? const {},
         );
       } else {
-        print(
+        AppLogger.info(
           'Cache expired for $cacheKey (age: ${age.inHours}h), fetching fresh URL',
         );
         _urlCache.remove(cacheKey);
@@ -110,12 +113,12 @@ class AudioPlayerService {
 
     if (isYoutube) {
       final videoId = id.substring(3);
-      print('Using YouTube service for playback: $videoId');
+      AppLogger.info('Using YouTube service for playback: $videoId');
       final extracted = await YoutubeSongApi.fetchBestStream(videoId);
       url = extracted.url;
       headers = extracted.headers;
     } else {
-      print('Using Saavn service for playback: $id');
+      AppLogger.info('Using Saavn service for playback: $id');
       url = await SaavnSongApi.fetchBestStreamUrl(id);
       headers = const {};
     }
@@ -146,14 +149,16 @@ class AudioPlayerService {
 
   Future<void> _loadAndPlaySong(int index, int token) async {
     if (index < 0 || index >= _queue.length) {
-      print('Invalid index: $index (queue length: ${_queue.length})');
+      AppLogger.warning(
+        'Invalid index: $index (queue length: ${_queue.length})',
+      );
       return;
     }
 
     final song = _queue[index];
 
     if (token != _playToken) {
-      print('Stale load request for index $index (token mismatch)');
+      AppLogger.info('Stale load request for index $index (token mismatch)');
       return;
     }
 
@@ -201,11 +206,14 @@ class AudioPlayerService {
       await _addToRecentlyPlayed(song);
       _youtubeRetryCount.remove(song.id);
 
-      print(
+      AppLogger.info(
         'Successfully loaded and playing: ${song.meta.title} (index: $index)',
       );
     } on PlayerException catch (e) {
-      print('PlayerException at index $index: ${e.code} - ${e.message}');
+      AppLogger.warning(
+        'PlayerException at index $index: ${e.code} - ${e.message}',
+        error: e,
+      );
 
       final errText = '${e.code} ${e.message ?? ''} $e';
       if (song.id.startsWith('yt:') && errText.contains('403')) {
@@ -214,7 +222,7 @@ class AudioPlayerService {
         _urlCache.remove(song.id);
 
         if (attempts <= 1) {
-          print(
+          AppLogger.warning(
             'YouTube 403 detected, retrying current track with fresh extraction (attempt $attempts)',
           );
           final retryToken = ++_playToken;
@@ -224,14 +232,14 @@ class AudioPlayerService {
         }
 
         _youtubeRetryCount.remove(song.id);
-        print('YouTube 403 persists after retries, skipping track');
+        AppLogger.warning('YouTube 403 persists after retries, skipping track');
         if (_currentIndex + 1 < _queue.length) {
           await Future.delayed(const Duration(milliseconds: 500));
           await skipNext();
         }
       }
     } catch (e) {
-      print('Failed to load song at index $index: $e');
+      AppLogger.warning('Failed to load song at index $index: $e', error: e);
 
       if (_currentIndex + 1 < _queue.length) {
         await Future.delayed(const Duration(milliseconds: 500));
@@ -249,7 +257,7 @@ class AudioPlayerService {
     required int startIndex,
   }) async {
     if (songs.isEmpty) {
-      print('Cannot play from empty list');
+      AppLogger.warning('Cannot play from empty list');
       return;
     }
 
@@ -257,7 +265,7 @@ class AudioPlayerService {
 
     final safeIndex = startIndex.clamp(0, songs.length - 1);
 
-    print(
+    AppLogger.info(
       'playFromList called: ${songs.length} songs, starting at index $safeIndex',
     );
 
@@ -289,7 +297,7 @@ class AudioPlayerService {
   Future<void> playNow(QueuedSong song) async {
     final int token = ++_playToken;
 
-    print('playNow called: ${song.meta.title}');
+    AppLogger.info('playNow called: ${song.meta.title}');
 
     _queue = List.unmodifiable([song]);
 
@@ -333,7 +341,7 @@ class AudioPlayerService {
       if (_player.loopMode == LoopMode.all) {
         await jumpToIndex(0);
       } else {
-        print('Reached end of queue');
+        AppLogger.info('Reached end of queue');
       }
       return;
     }
@@ -375,7 +383,7 @@ class AudioPlayerService {
     if (remaining > 5) return;
 
     final videoId = current.id.substring(3);
-    print('Extending YouTube queue using related tracks for $videoId');
+    AppLogger.info('Extending YouTube queue using related tracks for $videoId');
 
     try {
       final related = await YoutubeApi.relatedSongs(videoId, take: 10);
@@ -398,15 +406,17 @@ class AudioPlayerService {
       if (additions == null || additions.isEmpty) return;
 
       _queue = List<QueuedSong>.from(_queue)..addAll(additions);
-      print('Added ${additions.length} YouTube recommendations to the queue');
+      AppLogger.info(
+        'Added ${additions.length} YouTube recommendations to the queue',
+      );
     } catch (e) {
-      print('Failed to extend YouTube queue: $e');
+      AppLogger.warning('Failed to extend YouTube queue: $e', error: e);
     }
   }
 
   Future<void> jumpToIndex(int queueIndex) async {
     if (queueIndex < 0 || queueIndex >= _queue.length) {
-      print('Invalid jump index: $queueIndex');
+      AppLogger.warning('Invalid jump index: $queueIndex');
       return;
     }
 
@@ -449,7 +459,7 @@ class AudioPlayerService {
           _currentIndex + 1 < _queue.length) {
         skipNext();
       } else {
-        print('Playback completed');
+        AppLogger.info('Playback completed');
       }
     }
   }
@@ -468,7 +478,7 @@ class AudioPlayerService {
 
   void clearStreamCache() {
     _urlCache.clear();
-    print('Stream cache cleared');
+    AppLogger.info('Stream cache cleared');
   }
 
   Future<void> clearRecentlyPlayed() async {

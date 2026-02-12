@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import '../../core/utils/app_logger.dart';
 
 class YoutubeSongApi {
   static const MethodChannel _channel = MethodChannel('youtube_extractor');
@@ -50,7 +51,7 @@ class YoutubeSongApi {
   static Future<YoutubeExtractedStream> _fetchBestStreamInternal(
     String normalized,
   ) async {
-    print('Extracting stream via yt-dlp for: $normalized');
+    AppLogger.info('Extracting stream via yt-dlp for: $normalized');
     final authHeaders = await _loadAuthHeaders();
 
     dynamic response;

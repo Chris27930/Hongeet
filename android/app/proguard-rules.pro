@@ -12,7 +12,7 @@
 -keepattributes *Annotation*
 -keepattributes SourceFile,LineNumberTable
 
-# Google Play Core - Don't warn about missing classes (we're not using Play Store features)
+# Google Play Core - Don't warn about missing classes
 -dontwarn com.google.android.play.core.**
 -keep class com.google.android.play.core.** { *; }
 

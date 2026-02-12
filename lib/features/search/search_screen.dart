@@ -10,6 +10,7 @@ import 'package:hongit/data/models/saavn_song.dart';
 import 'package:hongit/features/search/widgets/song_card.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/utils/app_logger.dart';
 import '../../core/utils/glass_container.dart';
 import '../../core/utils/glass_page.dart';
 
@@ -31,6 +32,49 @@ class _SearchScreenState extends State<SearchScreen> {
   static const Duration _quickPicksCacheTtl = Duration(hours: 12);
   static const String _quickPicksCacheDataPrefix = 'quick_picks_cache_v1_';
   static const String _quickPicksCacheTsPrefix = 'quick_picks_cache_ts_v1_';
+  static const int _quickPicksTargetCount = 24;
+  static const List<String> _globallyBlockedTitleTokens = <String>[
+    'trending',
+    'new song',
+    'new songs',
+    'latest song',
+    'new trending',
+    'requested mix',
+    'request mix',
+    'mix songs',
+    'instagram',
+    'insta reel',
+    'reels',
+    'shorts',
+    'yt shorts',
+    'tik tok',
+    'tiktok',
+    'viral song',
+    '#',
+    '4k',
+    '8k',
+    'hd',
+    'desi song',
+    'desi songs',
+    'indian song',
+    'indian songs',
+    'best song',
+    'best songs',
+    'top song',
+    'top songs',
+  ];
+  static const List<String> _quickPicksFallbackBlockedTitleTokens = <String>[
+    'requested mix',
+    'request mix',
+    'mix songs',
+    'instagram',
+    'insta reel',
+    'reels',
+    'shorts',
+    'yt shorts',
+    'tik tok',
+    'tiktok',
+  ];
 
   static const int minSearchLength = 2;
 
@@ -74,17 +118,31 @@ class _SearchScreenState extends State<SearchScreen> {
     if (!forceRefresh) {
       final cached = _sessionSearchCache[cacheKey];
       if (cached != null) {
-        return cached.songs;
+        final globallyFiltered = _applyGlobalResultFilter(cached.songs);
+        if (isQuickPicksQuery) {
+          final curated = _resolveQuickPicksSongs(cached.songs);
+          _sessionSearchCache[cacheKey] = _SessionSearchCacheEntry(
+            songs: curated,
+          );
+          return curated;
+        }
+        if (globallyFiltered.length != cached.songs.length) {
+          _sessionSearchCache[cacheKey] = _SessionSearchCacheEntry(
+            songs: globallyFiltered,
+          );
+        }
+        return globallyFiltered;
       }
 
       if (isQuickPicksQuery) {
         final persisted = _readQuickPicksCache(prefs, useYoutube: useYoutube);
         if (persisted != null && persisted.isNotEmpty) {
+          final curated = _resolveQuickPicksSongs(persisted);
           _sessionSearchCache[cacheKey] = _SessionSearchCacheEntry(
-            songs: persisted,
+            songs: curated,
           );
           _trimSessionSearchCache();
-          return persisted;
+          return curated;
         }
       }
     }
@@ -93,23 +151,27 @@ class _SearchScreenState extends State<SearchScreen> {
       final List<SaavnSong> songs;
 
       if (useYoutube) {
-        print('Using YouTube service for search: "$normalizedQuery"');
+        AppLogger.info('Using YouTube service for search: "$normalizedQuery"');
         songs = await YoutubeApi.searchSongs(normalizedQuery);
       } else {
-        print('Using Saavn service for search: "$normalizedQuery"');
+        AppLogger.info('Using Saavn service for search: "$normalizedQuery"');
         songs = await SaavnApi.searchSongs(normalizedQuery);
       }
 
+      final globallyFiltered = _applyGlobalResultFilter(songs);
+      final resolvedSongs = isQuickPicksQuery
+          ? _resolveQuickPicksSongs(songs)
+          : globallyFiltered;
       _sessionSearchCache[cacheKey] = _SessionSearchCacheEntry(
-        songs: List<SaavnSong>.unmodifiable(songs),
+        songs: List<SaavnSong>.unmodifiable(resolvedSongs),
       );
       _trimSessionSearchCache();
 
-      if (isQuickPicksQuery && songs.isNotEmpty) {
+      if (isQuickPicksQuery && resolvedSongs.isNotEmpty) {
         await _writeQuickPicksCache(
           prefs,
           useYoutube: useYoutube,
-          songs: songs,
+          songs: resolvedSongs,
         );
       }
 
@@ -122,15 +184,181 @@ class _SearchScreenState extends State<SearchScreen> {
           allowExpired: true,
         );
         if (staleFallback != null && staleFallback.isNotEmpty) {
+          final curated = _resolveQuickPicksSongs(staleFallback);
           _sessionSearchCache[cacheKey] = _SessionSearchCacheEntry(
-            songs: staleFallback,
+            songs: curated,
           );
           _trimSessionSearchCache();
-          return staleFallback;
+          return curated;
         }
       }
       rethrow;
     }
+  }
+
+  List<SaavnSong> _resolveQuickPicksSongs(List<SaavnSong> songs) {
+    final strict = _curateQuickPicks(songs);
+    if (strict.isNotEmpty) return strict;
+
+    final fallbackBase = _applyQuickPicksFallbackFilter(songs);
+    if (fallbackBase.isEmpty) return const [];
+    return _curateQuickPicks(fallbackBase, preFiltered: true);
+  }
+
+  List<SaavnSong> _curateQuickPicks(
+    List<SaavnSong> songs, {
+    bool preFiltered = false,
+  }) {
+    final baseSongs = preFiltered ? songs : _applyGlobalResultFilter(songs);
+    if (baseSongs.isEmpty) return const [];
+
+    final scored = baseSongs
+        .map((song) => _ScoredSong(song: song, score: _quickPickScore(song)))
+        .toList(growable: false);
+
+    final strict = scored.where((e) => e.score >= 0).toList(growable: false)
+      ..sort((a, b) => b.score.compareTo(a.score));
+    if (strict.length >= 12) {
+      return strict
+          .take(_quickPicksTargetCount)
+          .map((e) => e.song)
+          .toList(growable: false);
+    }
+
+    final relaxed = scored.where((e) => e.score >= -2).toList(growable: false)
+      ..sort((a, b) => b.score.compareTo(a.score));
+    if (relaxed.isNotEmpty) {
+      return relaxed
+          .take(_quickPicksTargetCount)
+          .map((e) => e.song)
+          .toList(growable: false);
+    }
+
+    final fallback = [...scored]..sort((a, b) => b.score.compareTo(a.score));
+    return fallback
+        .take(_quickPicksTargetCount)
+        .map((e) => e.song)
+        .toList(growable: false);
+  }
+
+  int _quickPickScore(SaavnSong song) {
+    final title = song.name.toLowerCase();
+    final artist = song.artists.toLowerCase();
+    final combined = '$title $artist';
+
+    const hardBlocked = <String>[
+      'happy birthday',
+      'birthday song',
+      'nursery rhyme',
+      'nursery rhymes',
+      'kids song',
+      'baby song',
+      'lullaby',
+      'cocomelon',
+      'johny johny',
+      'wheels on the bus',
+      'podcast',
+      'interview',
+      'reaction',
+      'prank',
+      'vlog',
+      'tutorial',
+    ];
+    if (hardBlocked.any(combined.contains)) return -100;
+
+    var score = 0;
+    final seconds = song.duration ?? 0;
+
+    if (seconds >= 90 && seconds <= 6 * 60) {
+      score += 3;
+    } else if (seconds >= 60 && seconds <= 10 * 60) {
+      score += 1;
+    } else if (seconds > 0) {
+      score -= 2;
+    }
+
+    if (artist.trim().isNotEmpty && artist != 'unknown') {
+      score += 1;
+    } else {
+      score -= 1;
+    }
+
+    const goodSignals = <String>[
+      'official',
+      'audio',
+      'lyrics',
+      'lyric',
+      'vevo',
+      'topic',
+      'soundtrack',
+      'ost',
+    ];
+    if (goodSignals.any(combined.contains)) {
+      score += 2;
+    }
+
+    const weakSignals = <String>[
+      'cover',
+      'karaoke',
+      'instrumental',
+      'slowed',
+      'reverb',
+      'nightcore',
+      '8d',
+      'sped up',
+      'mashup',
+    ];
+    if (weakSignals.any(combined.contains)) {
+      score -= 2;
+    }
+
+    return score;
+  }
+
+  List<SaavnSong> _applyGlobalResultFilter(List<SaavnSong> songs) {
+    if (songs.isEmpty) return const [];
+    return songs.where(_passesGlobalResultFilter).toList(growable: false);
+  }
+
+  List<SaavnSong> _applyQuickPicksFallbackFilter(List<SaavnSong> songs) {
+    if (songs.isEmpty) return const [];
+
+    return songs
+        .where((song) {
+          final title = song.name.trim();
+          if (title.isEmpty) return false;
+          if (_containsEmoji(title)) return false;
+          final lowered = title.toLowerCase();
+          if (_quickPicksFallbackBlockedTitleTokens.any(lowered.contains)) {
+            return false;
+          }
+          return true;
+        })
+        .toList(growable: false);
+  }
+
+  bool _passesGlobalResultFilter(SaavnSong song) {
+    final title = song.name.trim();
+    if (title.isEmpty) return false;
+
+    if (_containsEmoji(title)) return false;
+
+    final lowered = title.toLowerCase();
+    if (_globallyBlockedTitleTokens.any(lowered.contains)) return false;
+
+    return true;
+  }
+
+  bool _containsEmoji(String value) {
+    for (final rune in value.runes) {
+      // broad emoji ranges & dingbats or symbol blocks commonly used in spam titles
+      final isEmoji =
+          (rune >= 0x1F300 && rune <= 0x1FAFF) ||
+          (rune >= 0x2600 && rune <= 0x27BF) ||
+          (rune >= 0xFE00 && rune <= 0xFE0F);
+      if (isEmoji) return true;
+    }
+    return false;
   }
 
   List<SaavnSong>? _readQuickPicksCache(
@@ -290,12 +518,15 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final perfMode = themeProvider.resolvedUiPerformanceMode(context);
+    final animateSectionHeader = perfMode == UiPerformanceMode.full;
 
     return GlassPage(
       child: RefreshIndicator(
         onRefresh: _refreshSearch,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
+          cacheExtent: 720,
           children: [
             const Text(
               'Welcome to\nHongeet',
@@ -342,18 +573,25 @@ class _SearchScreenState extends State<SearchScreen> {
 
             const SizedBox(height: 28),
 
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: Text(
-                isSearching ? 'Search Results' : 'Quick Picks',
-                key: ValueKey(isSearching),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-
+            animateSectionHeader
+                ? AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: Text(
+                      isSearching ? 'Search Results' : 'Quick Picks',
+                      key: ValueKey(isSearching),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  )
+                : Text(
+                    isSearching ? 'Search Results' : 'Quick Picks',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
             const SizedBox(height: 16),
 
             // Results
@@ -380,6 +618,12 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       );
     }
+
+    final perfMode = Provider.of<ThemeProvider>(
+      context,
+      listen: false,
+    ).resolvedUiPerformanceMode(context);
+    final smoothMode = perfMode == UiPerformanceMode.smooth;
 
     return FutureBuilder<List<SaavnSong>>(
       future: _searchFuture,
@@ -462,6 +706,9 @@ class _SearchScreenState extends State<SearchScreen> {
           padding: const EdgeInsets.only(bottom: 16),
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
+          cacheExtent: 900,
+          addAutomaticKeepAlives: !smoothMode,
+          addRepaintBoundaries: true,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             mainAxisSpacing: 16,
@@ -472,16 +719,18 @@ class _SearchScreenState extends State<SearchScreen> {
           itemBuilder: (_, i) {
             final song = songs[i];
 
-            return SongCard(
-              song: song,
-              onTap: () async {
-                if (i < 0 || i >= queuedSongs.length) return;
+            return RepaintBoundary(
+              child: SongCard(
+                song: song,
+                onTap: () async {
+                  if (i < 0 || i >= queuedSongs.length) return;
 
-                await AudioPlayerService().playFromList(
-                  songs: queuedSongs,
-                  startIndex: i,
-                );
-              },
+                  await AudioPlayerService().playFromList(
+                    songs: queuedSongs,
+                    startIndex: i,
+                  );
+                },
+              ),
             );
           },
         );
@@ -494,4 +743,11 @@ class _SessionSearchCacheEntry {
   final List<SaavnSong> songs;
 
   const _SessionSearchCacheEntry({required this.songs});
+}
+
+class _ScoredSong {
+  final SaavnSong song;
+  final int score;
+
+  const _ScoredSong({required this.song, required this.score});
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import '../../core/utils/youtube_thumbnail_utils.dart';
 import '../models/saavn_song.dart';
 
 class YoutubeApi {
@@ -238,7 +239,10 @@ class YoutubeApi {
       return null;
     }
 
-    final imageUrl = video.thumbnails.highResUrl;
+    final imageUrl = YoutubeThumbnailUtils.bestInitialUrl(
+      videoId: idRaw,
+      preferredUrl: video.thumbnails.highResUrl,
+    );
 
     return SaavnSong(
       id: 'yt:$idRaw',
