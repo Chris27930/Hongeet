@@ -24,7 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool showBatteryWarning = false;
   String manufacturer = '';
 
-  bool _useYoutubeService = false;
+  bool _useYoutubeService = true;
 
   static const _remindAfterDays = 5;
   static const _lastPromptKey = 'battery_prompt_time';
@@ -105,7 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _useYoutubeService = prefs.getBool('use_youtube_service') ?? false;
+      _useYoutubeService = prefs.getBool('use_youtube_service') ?? true;
     });
   }
 

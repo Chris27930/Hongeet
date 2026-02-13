@@ -110,7 +110,7 @@ class _SearchScreenState extends State<SearchScreen> {
     if (normalizedQuery.isEmpty) return [];
 
     final prefs = await SharedPreferences.getInstance();
-    final useYoutube = prefs.getBool('use_youtube_service') ?? false;
+    final useYoutube = prefs.getBool('use_youtube_service') ?? true;
     final isQuickPicksQuery = normalizedQuery.toLowerCase() == _quickPicksQuery;
     final cacheKey =
         '${useYoutube ? "yt" : "saavn"}:${normalizedQuery.toLowerCase()}';
