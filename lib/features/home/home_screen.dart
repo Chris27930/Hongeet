@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_update_service.dart';
 import '../library/library_screen.dart';
 import '../search/search_screen.dart';
 import '../settings/settings_screen.dart';
@@ -17,6 +18,28 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _index = 0;
   int _searchScreenVersion = 0;
+  bool _didRunStartupUpdateCheck = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _runStartupUpdateCheck();
+    });
+  }
+
+  Future<void> _runStartupUpdateCheck() async {
+    if (!mounted || _didRunStartupUpdateCheck) return;
+    _didRunStartupUpdateCheck = true;
+
+    try {
+      final result = await AppUpdateService().checkForUpdates();
+      if (!mounted || !result.hasUpdate) return;
+      await showUpdateDialog(context, result);
+    } catch (_) {
+      // Silent on startup manual check in settings shows explicit errors.
+    }
+  }
 
   void _onMusicServiceChanged(bool _) {
     setState(() {

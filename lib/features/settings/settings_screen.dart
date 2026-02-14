@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/glass_container.dart';
 import '../../core/utils/glass_page.dart';
 import '../../core/utils/audio_player_service.dart';
+import '../../core/utils/app_update_service.dart';
 import '../../core/utils/battery_optimization_handler.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -227,6 +228,29 @@ class _SettingsScreenState extends State<SettingsScreen>
         : 'Disabled: uses best available audio quality and high-resolution artwork.';
   }
 
+  Future<void> _checkForUpdatesManually() async {
+    try {
+      final result = await AppUpdateService().checkForUpdates();
+      if (!mounted) return;
+
+      if (!result.hasUpdate) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You are already on the latest version'),
+          ),
+        );
+        return;
+      }
+
+      await showUpdateDialog(context, result);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not check updates right now')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -258,6 +282,21 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
             const SizedBox(height: 20),
           ],
+
+          GlassContainer(
+            child: ListTile(
+              leading: Icon(
+                themeProvider.useGlassTheme
+                    ? CupertinoIcons.arrow_down_circle
+                    : Icons.system_update_alt,
+              ),
+              title: const Text('Check for updates'),
+              subtitle: const Text('Check latest version and update now'),
+              onTap: _checkForUpdatesManually,
+            ),
+          ),
+
+          const SizedBox(height: 12),
 
           GlassContainer(
             child: SwitchListTile(
