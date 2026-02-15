@@ -40,14 +40,22 @@ It runs a **local backend inside the app**, streams directly from the source, an
 <h3 align=center> 📸 Screenshots </h3>
 
 <p align="center">
-  <img src="assets/screenshots/1.jpg" width="260" />
-  <img src="assets/screenshots/2.jpg" width="260" />
-  <img src="assets/screenshots/3.jpg" width="260" />
+  <img src="assets/screenshots/01.jpg" width="240" />
+  <img src="assets/screenshots/02.jpg" width="240" />
+  <img src="assets/screenshots/03.jpg" width="240" />
 </p>
 <p align="center">
-  <img src="assets/screenshots/4.jpg" width="260" />
-  <img src="assets/screenshots/5.jpg" width="260" />
-  <img src="assets/screenshots/6.jpg" width="260" />
+  <img src="assets/screenshots/04.jpg" width="240" />
+  <img src="assets/screenshots/05.jpg" width="240" />
+  <img src="assets/screenshots/06.jpg" width="240" />
+</p>
+<p align="center">
+  <img src="assets/screenshots/07.jpg" width="240" />
+  <img src="assets/screenshots/08.jpg" width="240" />
+</p>
+<p align="center">
+  <img src="assets/screenshots/09.jpg" width="240" />
+  <img src="assets/screenshots/10.jpg" width="240" />
 </p>
 
 ---
@@ -66,7 +74,7 @@ It runs a **local backend inside the app**, streams directly from the source, an
 <div align="center">
   <h3>📥 Downloads</h3>
   Download songs directly to device storage<br>
-  Uses yt-dlp under the hood<br>
+  YouTube extraction powered by youtube_explode_dart<br>
   Offline playback from local files
 </div>
 
@@ -99,12 +107,35 @@ It runs a **local backend inside the app**, streams directly from the source, an
 
 <hr>
 
-<h2 align="center">🚧 Upcoming Updates</h2>
+<h2 align="center">🔐 Permissions</h2>
 
-<div align="center">
-  🔍 YouTube Music as alternate source<br>
-  🎨 More theming options
-</div>
+HONGEET only asks for permissions needed for playback, downloads, and local media access:
+
+- `INTERNET`  
+  For streaming audio and fetching music metadata.
+
+- `POST_NOTIFICATIONS` (Android 13+)  
+  For playback controls in notification/lock screen and download notifications.
+
+- `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`  
+  To keep background playback stable while the app is minimized or screen is locked.
+
+- `FOREGROUND_SERVICE_DATA_SYNC`  
+  To support background data tasks such as download/stream sync operations.
+
+- `READ_MEDIA_AUDIO` (Android 13+)  
+  To read audio files from device storage (downloads/local tracks).
+
+- `READ_EXTERNAL_STORAGE` (Android 12 and below)  
+  Backward-compatible local audio access on older Android versions.
+
+- `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`  
+  Optional: used to open battery optimization settings on aggressive OEM devices.
+  This is user-controlled and only requested to improve background playback reliability.
+
+HONGEET does not request contacts, location, microphone, or camera permissions.
+
+<hr>
 
 ---
 
