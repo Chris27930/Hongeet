@@ -712,6 +712,22 @@ class AudioPlayerService {
     _recentlyPlayedSubject.add([]);
   }
 
+  Future<void> stopAndClearNowPlaying() async {
+    ++_playToken;
+    _queue = [];
+    _currentIndex = 0;
+    _prefetchedForIndex = null;
+    _skipNextInFlight = null;
+    _youtubeRetryCount.clear();
+    _transientRetryCount.clear();
+
+    _currentIndexSubject.add(null);
+    _nowPlaying.add(null);
+    _trackLoading.add(false);
+
+    await _player.stop();
+  }
+
   Map<String, int> getStreamCacheStats() {
     final now = DateTime.now();
     int fresh = 0;

@@ -72,7 +72,7 @@ class AboutScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text('v1.3.2+12', style: TextStyle(fontSize: 16)),
+                const Text('v1.3.3+13', style: TextStyle(fontSize: 16)),
                 const SizedBox(height: 10),
                 const Text(
                   'A simple yet powerful music player designed for seamless streaming of your favorite songs. Enjoy a smooth, distraction-free listening experience with no ads, no interruptions, and a clean interface built for music lovers.',
@@ -80,7 +80,7 @@ class AboutScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'This app is open source and available on Github and licensed under the GPLv3.0',
+                  'This app is open source and available on Github and licensed under the GNU-AGPLv3.0-or-later',
                   style: TextStyle(fontSize: 12),
                 ),
               ],

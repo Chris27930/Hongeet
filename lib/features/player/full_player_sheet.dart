@@ -15,6 +15,7 @@ import '../../core/utils/youtube_thumbnail_utils.dart';
 import '../../core/widgets/fallback_network_image.dart';
 import 'widgets/player_progress_bar.dart';
 
+import '../../features/library/downloaded_songs_provider.dart';
 import '../../features/library/playlist_manager.dart';
 
 class FullPlayerSheet extends StatelessWidget {
@@ -27,12 +28,12 @@ class FullPlayerSheet extends StatelessWidget {
   }
 
   Future<void> _downloadSong(QueuedSong song) async {
-    try {
-      AppMessenger.show(
-        'Download queued: ${song.meta.title}',
-        color: Colors.blueGrey.shade800,
-      );
+    AppMessenger.show(
+      'Downloading: ${song.meta.title}',
+      color: Colors.blueGrey.shade800,
+    );
 
+    try {
       if (song.id.startsWith('yt:')) {
         final videoId = song.id.substring(3);
         final audioUrl = await YoutubeSongApi.fetchBestStreamUrl(videoId);
@@ -47,9 +48,55 @@ class FullPlayerSheet extends StatelessWidget {
         );
       }
 
-      AppMessenger.show('Download started', color: Colors.green.shade700);
+      AppMessenger.show('Download complete', color: Colors.green.shade700);
     } catch (_) {
       AppMessenger.show('Download failed', color: Colors.red.shade700);
+    }
+  }
+
+  bool _isDownloadedLocalTrack(QueuedSong? song) {
+    if (song == null || !song.isLocal) return false;
+    final normalizedPath = song.id.replaceAll('\\', '/').toLowerCase();
+    return normalizedPath.startsWith('/storage/emulated/0/download/hongit/') ||
+        normalizedPath.startsWith('/storage/emulated/0/downloads/hongit/');
+  }
+
+  Future<void> _deleteDownloadedSong(
+    BuildContext context,
+    QueuedSong song,
+    AudioPlayerService player,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Song'),
+        content: Text('Delete "${song.meta.title}" from downloads?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    await DownloadedSongsProvider.delete(song.id);
+    await player.stopAndClearNowPlaying();
+    AppMessenger.show(
+      'Deleted ${song.meta.title}',
+      color: Colors.redAccent.shade700,
+    );
+    if (context.mounted) {
+      Navigator.of(context).maybePop();
     }
   }
 
@@ -75,6 +122,10 @@ class FullPlayerSheet extends StatelessWidget {
             final currentSong = index >= 0 && index < queue.length
                 ? queue[index]
                 : null;
+            final hasRemoteTrack = currentSong != null && !currentSong.isLocal;
+            final hasDownloadedLocalTrack = _isDownloadedLocalTrack(
+              currentSong,
+            );
             final currentArtScale = YoutubeThumbnailUtils.preferredArtworkScale(
               songId: currentSong?.id,
               imageUrl: now.imageUrl,
@@ -288,224 +339,250 @@ class FullPlayerSheet extends StatelessWidget {
                                     children: [
                                       Row(
                                         mainAxisAlignment:
-                                            MainAxisAlignment.spaceEvenly,
+                                            MainAxisAlignment.center,
                                         children: [
-                                          StreamBuilder<LoopMode>(
-                                            stream: player.loopModeStream,
-                                            builder: (_, snap) {
-                                              final mode =
-                                                  snap.data ?? LoopMode.off;
-                                              return IconButton(
-                                                icon: Icon(
-                                                  mode == LoopMode.one
-                                                      ? (theme.useGlassTheme
-                                                            ? CupertinoIcons
-                                                                  .repeat_1
-                                                            : Icons.repeat_one)
-                                                      : (theme.useGlassTheme
-                                                            ? CupertinoIcons
-                                                                  .repeat
-                                                            : Icons.repeat),
-                                                  color: mode == LoopMode.off
-                                                      ? Colors.white54
-                                                      : Colors.white,
-                                                ),
-                                                onPressed:
-                                                    player.toggleLoopMode,
-                                              );
-                                            },
-                                          ),
-                                          IconButton(
-                                            icon: Icon(
-                                              theme.useGlassTheme
-                                                  ? CupertinoIcons
-                                                        .backward_end_fill
-                                                  : Icons.skip_previous,
+                                          SizedBox(
+                                            width: 48,
+                                            child: StreamBuilder<LoopMode>(
+                                              stream: player.loopModeStream,
+                                              builder: (_, snap) {
+                                                final mode =
+                                                    snap.data ?? LoopMode.off;
+                                                return IconButton(
+                                                  icon: Icon(
+                                                    mode == LoopMode.one
+                                                        ? (theme.useGlassTheme
+                                                              ? CupertinoIcons
+                                                                    .repeat_1
+                                                              : Icons
+                                                                    .repeat_one)
+                                                        : (theme.useGlassTheme
+                                                              ? CupertinoIcons
+                                                                    .repeat
+                                                              : Icons.repeat),
+                                                    color: mode == LoopMode.off
+                                                        ? Colors.white54
+                                                        : Colors.white,
+                                                  ),
+                                                  onPressed:
+                                                      player.toggleLoopMode,
+                                                );
+                                              },
                                             ),
-                                            iconSize: 30,
-                                            onPressed: player.skipPrevious,
                                           ),
-                                          StreamBuilder<bool>(
-                                            stream: player.trackLoadingStream,
-                                            initialData: player.isTrackLoading,
-                                            builder: (_, loadingSnap) {
-                                              final isLoading =
-                                                  loadingSnap.data ?? false;
-                                              return StreamBuilder(
-                                                stream:
-                                                    player.playerStateStream,
-                                                builder: (_, snap) {
-                                                  final playing =
-                                                      snap.data?.playing ??
-                                                      false;
-                                                  return AnimatedSwitcher(
-                                                    duration: const Duration(
-                                                      milliseconds: 200,
-                                                    ),
-                                                    child: isLoading
-                                                        ? SizedBox(
-                                                            key: const ValueKey(
-                                                              'loading',
-                                                            ),
-                                                            width: 56,
-                                                            height: 56,
-                                                            child: Center(
-                                                              child: SizedBox(
-                                                                width: 28,
-                                                                height: 28,
-                                                                child: CircularProgressIndicator(
-                                                                  strokeWidth:
-                                                                      2.8,
-                                                                  valueColor:
-                                                                      AlwaysStoppedAnimation<
-                                                                        Color
-                                                                      >(
-                                                                        Colors
-                                                                            .white,
-                                                                      ),
+                                          SizedBox(
+                                            width: 52,
+                                            child: IconButton(
+                                              icon: Icon(
+                                                theme.useGlassTheme
+                                                    ? CupertinoIcons
+                                                          .backward_end_fill
+                                                    : Icons.skip_previous,
+                                              ),
+                                              iconSize: 30,
+                                              onPressed: player.skipPrevious,
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: 72,
+                                            child: StreamBuilder<bool>(
+                                              stream: player.trackLoadingStream,
+                                              initialData:
+                                                  player.isTrackLoading,
+                                              builder: (_, loadingSnap) {
+                                                final isLoading =
+                                                    loadingSnap.data ?? false;
+                                                return StreamBuilder(
+                                                  stream:
+                                                      player.playerStateStream,
+                                                  builder: (_, snap) {
+                                                    final playing =
+                                                        snap.data?.playing ??
+                                                        false;
+                                                    return AnimatedSwitcher(
+                                                      duration: const Duration(
+                                                        milliseconds: 200,
+                                                      ),
+                                                      child: isLoading
+                                                          ? SizedBox(
+                                                              key:
+                                                                  const ValueKey(
+                                                                    'loading',
+                                                                  ),
+                                                              width: 56,
+                                                              height: 56,
+                                                              child: Center(
+                                                                child: SizedBox(
+                                                                  width: 28,
+                                                                  height: 28,
+                                                                  child: CircularProgressIndicator(
+                                                                    strokeWidth:
+                                                                        2.8,
+                                                                    valueColor:
+                                                                        AlwaysStoppedAnimation<
+                                                                          Color
+                                                                        >(
+                                                                          Colors
+                                                                              .white,
+                                                                        ),
+                                                                  ),
                                                                 ),
                                                               ),
+                                                            )
+                                                          : IconButton(
+                                                              key: ValueKey(
+                                                                playing,
+                                                              ),
+                                                              iconSize: 56,
+                                                              icon: Icon(
+                                                                playing
+                                                                    ? (theme.useGlassTheme
+                                                                          ? CupertinoIcons.pause_circle_fill
+                                                                          : Icons.pause_circle_filled)
+                                                                    : (theme.useGlassTheme
+                                                                          ? CupertinoIcons.play_circle_fill
+                                                                          : Icons.play_circle_filled),
+                                                              ),
+                                                              onPressed: player
+                                                                  .togglePlayPause,
                                                             ),
-                                                          )
-                                                        : IconButton(
-                                                            key: ValueKey(
-                                                              playing,
-                                                            ),
-                                                            iconSize: 56,
-                                                            icon: Icon(
-                                                              playing
-                                                                  ? (theme.useGlassTheme
-                                                                        ? CupertinoIcons
-                                                                              .pause_circle_fill
-                                                                        : Icons
-                                                                              .pause_circle_filled)
-                                                                  : (theme.useGlassTheme
-                                                                        ? CupertinoIcons
-                                                                              .play_circle_fill
-                                                                        : Icons
-                                                                              .play_circle_filled),
-                                                            ),
-                                                            onPressed: player
-                                                                .togglePlayPause,
-                                                          ),
-                                                  );
-                                                },
-                                              );
-                                            },
-                                          ),
-                                          IconButton(
-                                            icon: Icon(
-                                              theme.useGlassTheme
-                                                  ? CupertinoIcons
-                                                        .forward_end_fill
-                                                  : Icons.skip_next,
+                                                    );
+                                                  },
+                                                );
+                                              },
                                             ),
-                                            iconSize: 30,
-                                            onPressed: player.skipNext,
                                           ),
-                                          if (currentSong != null &&
-                                              !currentSong.isLocal)
+                                          SizedBox(
+                                            width: 52,
+                                            child: IconButton(
+                                              icon: Icon(
+                                                theme.useGlassTheme
+                                                    ? CupertinoIcons
+                                                          .forward_end_fill
+                                                    : Icons.skip_next,
+                                              ),
+                                              iconSize: 30,
+                                              onPressed: player.skipNext,
+                                            ),
+                                          ),
+                                          if (hasRemoteTrack)
+                                            SizedBox(
+                                              width: 48,
+                                              child: IconButton(
+                                                icon: Icon(
+                                                  theme.useGlassTheme
+                                                      ? CupertinoIcons
+                                                            .arrow_down
+                                                      : Icons.download,
+                                                ),
+                                                onPressed: () =>
+                                                    _downloadSong(currentSong),
+                                              ),
+                                            ),
+                                          if (!hasRemoteTrack &&
+                                              hasDownloadedLocalTrack)
+                                            SizedBox(
+                                              width: 48,
+                                              child: IconButton(
+                                                icon: Icon(
+                                                  theme.useGlassTheme
+                                                      ? CupertinoIcons.trash
+                                                      : Icons.delete_outline,
+                                                  color: Colors.redAccent,
+                                                ),
+                                                onPressed: () =>
+                                                    _deleteDownloadedSong(
+                                                      context,
+                                                      currentSong!,
+                                                      player,
+                                                    ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      if (hasRemoteTrack) ...[
+                                        const SizedBox(height: 8),
+
+                                        // Secondary controls (only for streamed tracks)
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            StreamBuilder<
+                                              Map<
+                                                String,
+                                                List<Map<String, dynamic>>
+                                              >
+                                            >(
+                                              stream: PlaylistManager.stream,
+                                              builder: (_, snap) {
+                                                final playlists =
+                                                    snap.data ?? {};
+                                                final favs =
+                                                    playlists[PlaylistManager
+                                                        .systemFavourites] ??
+                                                    [];
+                                                final isFav = favs.any(
+                                                  (s) =>
+                                                      s['id'] == currentSong.id,
+                                                );
+
+                                                return IconButton(
+                                                  icon: Icon(
+                                                    theme.useGlassTheme
+                                                        ? (isFav
+                                                              ? CupertinoIcons
+                                                                    .heart_fill
+                                                              : CupertinoIcons
+                                                                    .heart)
+                                                        : (isFav
+                                                              ? Icons.favorite
+                                                              : Icons
+                                                                    .favorite_border),
+                                                    color: isFav
+                                                        ? Colors.redAccent
+                                                        : Colors.white70,
+                                                  ),
+                                                  iconSize: 26,
+                                                  onPressed: () async =>
+                                                      await PlaylistManager.toggleFavourite(
+                                                        {
+                                                          'id': currentSong.id,
+                                                          'title': currentSong
+                                                              .meta
+                                                              .title,
+                                                          'artist': currentSong
+                                                              .meta
+                                                              .artist,
+                                                          'imageUrl':
+                                                              currentSong
+                                                                  .meta
+                                                                  .imageUrl,
+                                                        },
+                                                      ),
+                                                );
+                                              },
+                                            ),
+                                            const SizedBox(width: 24),
                                             IconButton(
                                               icon: Icon(
                                                 theme.useGlassTheme
-                                                    ? CupertinoIcons.arrow_down
-                                                    : Icons.download,
+                                                    ? CupertinoIcons
+                                                          .music_note_list
+                                                    : Icons.playlist_add,
+                                                color: Colors.white70,
                                               ),
-                                              onPressed: () =>
-                                                  _downloadSong(currentSong),
+                                              iconSize: 26,
+                                              onPressed: () {
+                                                _showAddToPlaylistSheet(
+                                                  context,
+                                                  currentSong,
+                                                );
+                                              },
                                             ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-
-                                      // Secondary controls
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          StreamBuilder<
-                                            Map<
-                                              String,
-                                              List<Map<String, dynamic>>
-                                            >
-                                          >(
-                                            stream: PlaylistManager.stream,
-                                            builder: (_, snap) {
-                                              final playlists = snap.data ?? {};
-                                              final favs =
-                                                  playlists[PlaylistManager
-                                                      .systemFavourites] ??
-                                                  [];
-                                              final isFav =
-                                                  currentSong != null &&
-                                                  favs.any(
-                                                    (s) =>
-                                                        s['id'] ==
-                                                        currentSong.id,
-                                                  );
-
-                                              return IconButton(
-                                                icon: Icon(
-                                                  theme.useGlassTheme
-                                                      ? (isFav
-                                                            ? CupertinoIcons
-                                                                  .heart_fill
-                                                            : CupertinoIcons
-                                                                  .heart)
-                                                      : (isFav
-                                                            ? Icons.favorite
-                                                            : Icons
-                                                                  .favorite_border),
-                                                  color: isFav
-                                                      ? Colors.redAccent
-                                                      : Colors.white70,
-                                                ),
-                                                iconSize: 26,
-                                                onPressed: currentSong == null
-                                                    ? null
-                                                    : () async =>
-                                                          await PlaylistManager.toggleFavourite(
-                                                            {
-                                                              'id': currentSong
-                                                                  .id,
-                                                              'title':
-                                                                  currentSong
-                                                                      .meta
-                                                                      .title,
-                                                              'artist':
-                                                                  currentSong
-                                                                      .meta
-                                                                      .artist,
-                                                              'imageUrl':
-                                                                  currentSong
-                                                                      .meta
-                                                                      .imageUrl,
-                                                            },
-                                                          ),
-                                              );
-                                            },
-                                          ),
-                                          const SizedBox(width: 24),
-                                          IconButton(
-                                            icon: Icon(
-                                              theme.useGlassTheme
-                                                  ? CupertinoIcons
-                                                        .music_note_list
-                                                  : Icons.playlist_add,
-                                              color: Colors.white70,
-                                            ),
-                                            iconSize: 26,
-                                            onPressed: currentSong == null
-                                                ? null
-                                                : () {
-                                                    _showAddToPlaylistSheet(
-                                                      context,
-                                                      currentSong,
-                                                    );
-                                                  },
-                                          ),
-                                        ],
-                                      ),
+                                          ],
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ],
