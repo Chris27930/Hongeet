@@ -176,21 +176,7 @@ _If you are a rights holder and believe something is wrong, please open an issue
 
 <h2 align=center> 📜 License </h2>
 
-_This project is licensed under the GNU-GPLv3 or later. Check [LICENSE](LICENSE) for License info._
-
-_Meanwhile you are free to:_
-
-- use
-- modify
-- distribute
-
-_With **PROPER ATTRIBUTION**_
-
-<h2 align=center> But </h2>
-
-- Copied/Modified version of this software can not be used for 'non-free' and profit purposes.
-- You can not publish copied/modified version of this app on closed source app repository
-  like PlayStore/AppStore.
+_This project is licensed under the GNU-AGPLv3 or later. Check [LICENSE](LICENSE) for License info._
 
 ---
 
