@@ -18,6 +18,12 @@ android {
     namespace = "com.dxku.hongit"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+    dependenciesInfo {
+        // Disables dependency metadata when building APKs (useful for IzzyOnDroid/F-Droid)
+        includeInApk = false
+        // Disables dependency metadata when building Android App Bundles
+        includeInBundle = false
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
