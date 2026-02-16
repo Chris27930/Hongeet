@@ -13,6 +13,9 @@
 
 ---
 
+> [!IMPORTANT]
+> Hongeet is in active development. Expect bugs, crashes, and missing features. If you get into any bugs or come across any issues, please report them in the [Issues](https://github.com/greenbugx/Hongeet/issues)
+
 _HONGEET is a **local-first music app** that lets you  
 **stream** and **download** music with maximum control — no ads, no trackers, no nonsense._
 
@@ -111,25 +114,25 @@ It runs a **local backend inside the app**, streams directly from the source, an
 
 HONGEET only asks for permissions needed for playback, downloads, and local media access:
 
-- `INTERNET`  
+>- `INTERNET`  
   For streaming audio and fetching music metadata.
-
-- `POST_NOTIFICATIONS` (Android 13+)  
+>
+>- `POST_NOTIFICATIONS` (Android 13+)  
   For playback controls in notification/lock screen and download notifications.
-
-- `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`  
+>
+>- `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK`  
   To keep background playback stable while the app is minimized or screen is locked.
-
-- `FOREGROUND_SERVICE_DATA_SYNC`  
+>
+>- `FOREGROUND_SERVICE_DATA_SYNC`  
   To support background data tasks such as download/stream sync operations.
-
-- `READ_MEDIA_AUDIO` (Android 13+)  
+>
+>- `READ_MEDIA_AUDIO` (Android 13+)  
   To read audio files from device storage (downloads/local tracks).
-
-- `READ_EXTERNAL_STORAGE` (Android 12 and below)  
+>
+>- `READ_EXTERNAL_STORAGE` (Android 12 and below)  
   Backward-compatible local audio access on older Android versions.
-
-- `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`  
+>
+>- `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`  
   Optional: used to open battery optimization settings on aggressive OEM devices.
   This is user-controlled and only requested to improve background playback reliability.
 
@@ -159,16 +162,8 @@ _For detailed info about Contributing to this project, please check [CONTRIBUTIN
 
 ---
 
-<h2 align=center> ⚠️ Disclaimer </h2>
-
-_HONGEET is a personal / educational project._
-
-- It does not host or distribute copyrighted content
-- All media is fetched directly from third-party sources
-- Users are responsible for how they use the app
-- This project is not affiliated with JioSaavn or YouTube
-
-_If you are a rights holder and believe something is wrong, please open an issue._
+> [!WARNING]
+> Hongeet is a personal project built for learning and fun. It is not intended for commercial use or distribution. Please do not use it to host or distribute copyrighted content without proper permissions. If you are a rights holder and believe something is wrong, please open an issue
 
 ---
 
@@ -189,8 +184,4 @@ This project wouldn’t exist without them.
 
 ---
 
-_<h5 align=center> HONGEET started as an experiment. </h5>_
-
-_<h4 align=center> It became a challenge. </h4>_
-
-_<h2 align=center> Then it became an app. 🚀🎧 </h2>_
+<h2 align=center> <em>Now dont cry listening to sad songs :)</em> </h2>
