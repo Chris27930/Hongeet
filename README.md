@@ -66,37 +66,47 @@ It runs a **local backend inside the app**, streams directly from the source, an
 <h2 align="center">✨ Features</h2>
 
   <h3>🎶 Streaming</h3>
-  <li>High-quality audio streaming<br></li>
-  <li>Smart URL caching (faster repeat plays)<br></li>
-  <li>Gapless playback with queue management</li>
+  <ul>
+    <li>High-quality audio streaming<br></li>
+    <li>Smart URL caching (faster repeat plays)<br></li>
+    <li>Gapless playback with queue management</li>
+  </ul>
 
 <br>
 
   <h3>📥 Downloads</h3>
-  <li>Download songs directly to device storage<br></li>
-  <li>YouTube extraction powered by youtube_explode_dart<br></li>
-  <li>Offline playback from local files</li>
+  <ul>
+    <li>Download songs directly to device storage<br></li>
+    <li>YouTube extraction powered by youtube_explode_dart<br></li>
+    <li>Offline playback from local files</li>
+  </ul>
 
 <br>
 
   <h3>🧠 Smart Playback</h3>
-  <li>Recently Played history<br></li>
-  <li>Loop modes (off / all / one)</li>
+  <ul>
+    <li>Recently Played history<br></li>
+    <li>Loop modes (off / all / one)</li>
+  </ul>
 
 <br>
 
   <h3>🖤 UI / UX</h3>
-  <li>Glassmorphism-inspired design<br></li>
-  <li>Smooth animations<br></li>
-  <li>Full-screen player with blur background<br></li>
-  <li>Mini player support</li>
+  <ul>
+    <li>Glassmorphism-inspired design<br></li>
+    <li>Smooth animations<br></li>
+    <li>Full-screen player with blur background<br></li>
+    <li>Mini player support</li>
+  </ul>
 
 <br>
 
   <h3>🔐 Local-First</h3>
-  <li>No external backend servers<br></li>
-  <li>Everything runs on-device<br></li>
-  <li>Your music stays with you</li>
+  <ul>
+    <li>No external backend servers<br></li>
+    <li>Everything runs on-device<br></li>
+    <li>Your music stays with you</li>
+  </ul>
 
 <hr>
 
