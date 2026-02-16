@@ -89,7 +89,6 @@ flutter:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
   assets:
-    - response.json
     - assets/icon/icon_fg.png
     - assets/app/icon_fg.webp
 
