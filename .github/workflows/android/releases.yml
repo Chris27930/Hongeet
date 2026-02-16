@@ -1,0 +1,76 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., v1.0.0). Leave empty to auto-detect from CHANGELOGS.md"
+        required: false
+        type: string
+      prerelease:
+        description: "Mark as pre-release"
+        required: false
+        type: boolean
+        default: false
+jobs:
+  build-and-release:
+    name: Build and Release APKs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract version and description from CHANGELOGS.md
+        id: changelog
+        run: |
+          # Extract the latest version (first ## v... header), keeping the build number
+          VERSION=$(grep -m 1 '## v' CHANGELOGS.md | sed 's/## v//' | xargs)
+          # Extract description from the latest version until the next ## or end of file
+          DESCRIPTION=$(awk '/^## v/ {if (found) exit; found=1; next} found' CHANGELOGS.md)
+          # Use provided input if available, otherwise use extracted values
+          if [[ -n "${{ inputs.version }}" ]]; then
+            VERSION="${{ inputs.version }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "description<<EOF" >> $GITHUB_OUTPUT
+          echo "$DESCRIPTION" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: pubspec.yaml
+          channel: "stable"
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Build Signed APKs (Split per ABI)
+        uses: cedvdb/action-flutter-build-android@v1
+        with:
+          keystore-base64: ${{ secrets.ANDROID_RELEASE_KEY }}
+          keystore-password: "${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}"
+          build-cmd: flutter build apk --release --split-per-abi
+          working-directory: ./
+      - name: Rename APK files
+        run: |
+          cd build/app/outputs/flutter-apk
+          mv app-arm64-v8a-release.apk hongit-${{ steps.changelog.outputs.version }}-arm64-v8a.apk
+          mv app-armeabi-v7a-release.apk hongit-${{ steps.changelog.outputs.version }}-armeabi-v7a.apk
+          mv app-x86_64-release.apk hongit-${{ steps.changelog.outputs.version }}-x86_64.apk
+          ls -lah
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.changelog.outputs.version }}
+          name: v${{ steps.changelog.outputs.version }}
+          body: ${{ steps.changelog.outputs.description }}
+          draft: true
+          prerelease: ${{ inputs.prerelease }}
+          files: |
+            build/app/outputs/flutter-apk/hongit-${{ steps.changelog.outputs.version }}-arm64-v8a.apk
+            build/app/outputs/flutter-apk/hongit-${{ steps.changelog.outputs.version }}-armeabi-v7a.apk
+            build/app/outputs/flutter-apk/hongit-${{ steps.changelog.outputs.version }}-x86_64.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
