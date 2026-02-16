@@ -14,7 +14,7 @@
 ---
 
 > [!IMPORTANT]
-> Hongeet is in active development. Expect bugs, crashes, and missing features. If you get into any bugs or come across any issues, please report them in the [Issues](https://github.com/greenbugx/Hongeet/issues)
+> Hongeet is in active development. Expect bugs, crashes, and missing features. If you come across into any bugs or any issues, please report them in the [Issues](https://github.com/greenbugx/Hongeet/issues)
 
 _HONGEET is a **local-first music app** that lets you  
 **stream** and **download** music with maximum control — no ads, no trackers, no nonsense._
