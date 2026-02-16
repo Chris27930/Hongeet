@@ -1,49 +1,62 @@
 name: CI
+
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.38.7"
           channel: "stable"
+
       - name: Get dependencies
         run: flutter pub get
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos --no-fatal-warnings || true
+
   build:
     name: Build APK
     runs-on: ubuntu-latest
     needs: test
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.38.7"
           channel: "stable"
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "17"
+
       - name: Get dependencies
         run: flutter pub get
+
       - name: Build APK
         uses: cedvdb/action-flutter-build-android@v1
         with:
           keystore-base64: ${{ secrets.ANDROID_RELEASE_KEY }}
           keystore-password: "${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}"
-          build-cmd: flutter build apk --release --split-per-abi
+          build-cmd: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
           working-directory: ./
+
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
