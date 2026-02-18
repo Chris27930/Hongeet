@@ -1,4 +1,4 @@
-<p align="center"><img src="images/icon.png" alt="icon-launcher"></p>
+<p align="center"><img src="images/icon/icon.png" alt="icon-launcher"></p>
 
 <h1 align="center">CraftLaunch</h1>
 
